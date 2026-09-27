@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Homey from 'homey';
 import BoostDevice from './device.js';
 import * as C from '../../lib/constants.js';
@@ -7,17 +8,19 @@ class BoostDriver extends Homey.Driver {
     this.log('BoostDriver onInit');
   }
 
-  async onPairListDevices({ devices }: { devices: any[] }) {
-    return devices;
+  async onPairListDevices() {
+    return [];
   }
 
-  async onPairScan({ filters, seconds }: { filters: any, seconds: number }) {
+  async onPairScan({ seconds }: { seconds: number }) {
     const serviceUuid = C.SERVICE_UUID;
     
     const foundDevices: Array<{name: string, data: {id: string}}> = [];
     
-    this.homey.ble.scan({ uuids: [serviceUuid], timeout: seconds * 1000 })
-      .on('device', (peripheral: any) => {
+    const scan = (this.homey as any).ble.scan({ uuids: [serviceUuid], timeout: seconds * 1000 });
+    
+    await new Promise<void>((resolve) => {
+      scan.on('device', (peripheral: any) => {
         const name = peripheral.localName || 'LEGO Boost';
         foundDevices.push({
           name,
@@ -26,12 +29,19 @@ class BoostDriver extends Homey.Driver {
           },
         });
       });
+      
+      setTimeout(() => {
+        scan.stop();
+        resolve();
+      }, seconds * 1000);
+    });
 
     return foundDevices;
   }
 
   async onPairSelectDevice({ deviceId }: { deviceId: string }) {
-    const peripheral = await this.homey.ble.find(deviceId);
+    const bleManager = this.homey.ble as any;
+    const peripheral = await bleManager.find(deviceId);
     await peripheral.connect();
     
     await peripheral.discoverServices();

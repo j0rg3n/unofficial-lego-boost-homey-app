@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Homey from 'homey';
 import { BoostController } from '../../lib/BoostController.js';
 import { LWPClient } from '../../lib/LWPClient.js';
@@ -5,6 +6,14 @@ import { MockLWPClient } from '../../test/mocks/MockLWPClient.js';
 import * as C from '../../lib/constants.js';
 
 class BoostDevice extends Homey.Device {
+  private client: LWPClient | MockLWPClient | null = null;
+  private controller: BoostController | null = null;
+  private _settings: Record<string, any> = {
+    motor_max_power: C.DEFAULT_MAX_POWER,
+    tilt_delta: C.DEFAULT_TILT_DELTA,
+  };
+  private _activePorts: Record<string, number> = {};
+
   async onInit() {
     this._settings = {
       motor_max_power: C.DEFAULT_MAX_POWER,
@@ -19,18 +28,21 @@ class BoostDevice extends Homey.Device {
     this._bindControllerEvents();
   }
 
-  _createClient() {
-    if (this.homey.mock) {
+  _createClient(): LWPClient | MockLWPClient {
+    const homeyAny = this.homey as any;
+    if (homeyAny.mock) {
       const mock = new MockLWPClient();
       return mock;
     }
 
-    const peripheral = this.homey.ble.peripheral;
+    const peripheral = homeyAny.ble.peripheral;
     return new LWPClient(peripheral);
   }
 
   _bindControllerEvents() {
-    this.controller.on('hub_property', ({ property, value }) => {
+    if (!this.controller) return;
+
+    this.controller.on('hub_property', ({ property, value }: { property: number; value: number }) => {
       if (property === C.PROP_BATTERY_VOLT) {
         const batteryPercent = Math.min(100, Math.round((value / 8000) * 100));
         this.setCapabilityValue('measure_battery', batteryPercent);
@@ -42,25 +54,25 @@ class BoostDevice extends Homey.Device {
       setTimeout(() => this.setCapabilityValue('button', false), 500);
     });
 
-    this.controller.on('port_attached', ({ portKey, ioTypeId }) => {
+    this.controller.on('port_attached', ({ portKey, ioTypeId }: { portKey: string; ioTypeId: number }) => {
       this._handlePortAttached(portKey, ioTypeId);
     });
 
-    this.controller.on('port_detached', ({ portKey }) => {
+    this.controller.on('port_detached', ({ portKey }: { portKey: string }) => {
       this._handlePortDetached(portKey);
     });
 
-    this.controller.on('port_value', ({ portKey, capabilityId, value }) => {
+    this.controller.on('port_value', ({ portKey, capabilityId, value }: { portKey: string; capabilityId: string; value: number }) => {
       this._handlePortValue(portKey, capabilityId, value);
     });
 
-    this.controller.on('alert', ({ type, status }) => {
+    this.controller.on('alert', ({ type, status }: { type: number; status: number }) => {
       if (type === C.ALERT_LOW_VOLTAGE && status === 0x01) {
-        this.homey.flow.getDeviceTriggerCard('low_battery').trigger(this);
+        (this.homey as any).flow.getTriggerCard('low_battery')?.trigger(this);
       }
     });
 
-    this.controller.on('error', (err) => {
+    this.controller.on('error', (err: Error) => {
       this.error('Controller error:', err.message);
     });
 
@@ -84,6 +96,7 @@ class BoostDevice extends Homey.Device {
   }
 
   async _handlePortDetached(portKey: string) {
+    if (!this.controller) return;
     const activeIoType = this.controller.portState.getActiveIoType(portKey);
     if (!activeIoType) return;
 
@@ -119,17 +132,20 @@ class BoostDevice extends Homey.Device {
   }
 
   async onConnect() {
+    if (!this.controller) return;
     try {
       await this.controller.start();
       this.setAvailable();
-    } catch (err) {
+    } catch (err: any) {
       this.error('Connection failed:', err.message);
       throw err;
     }
   }
 
   async onDisconnect() {
-    await this.controller.stop();
+    if (this.controller) {
+      await this.controller.stop();
+    }
   }
 
   async onSettings({ newSettings }: { newSettings: Record<string, any> }) {
@@ -138,11 +154,15 @@ class BoostDevice extends Homey.Device {
 
   async setMotorSpeed(portKey: string, speed: number) {
     const maxPower = this._settings.motor_max_power || C.DEFAULT_MAX_POWER;
-    await this.controller.setMotorSpeed(portKey, speed, maxPower);
+    if (this.controller) {
+      await this.controller.setMotorSpeed(portKey, speed, maxPower);
+    }
   }
 
   async setLedColor(r: number, g: number, b: number) {
-    await this.controller.setLedColor(r, g, b);
+    if (this.controller) {
+      await this.controller.setLedColor(r, g, b);
+    }
   }
 
   getActivePorts() {

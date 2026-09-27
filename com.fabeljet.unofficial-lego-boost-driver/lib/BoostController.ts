@@ -4,13 +4,31 @@ import * as MB from './MessageBuilder';
 import * as C from './constants';
 import { PortStateManager } from './PortStateManager';
 import { get } from './IoTypeMap';
+import { LWPClient } from './LWPClient';
+import { MockLWPClient } from '../test/mocks/MockLWPClient';
+
+interface BoostControllerEvents {
+  hub_property: (data: { property: number; value: number }) => void;
+  port_attached: (data: { portKey: string; ioTypeId: number; ioTypeName: string }) => void;
+  port_detached: (data: { portKey: string }) => void;
+  port_value: (data: { portKey: string; ioTypeId: number; capabilityId: string; value: number }) => void;
+  button_pressed: () => void;
+  alert: (data: { type: number; status: number }) => void;
+  error: (err: Error) => void;
+  disconnect: () => void;
+  reconnect: () => void;
+  motor_complete: (data: { portId: number }) => void;
+}
 
 export class BoostController extends EventEmitter {
-  constructor(client) {
+  client: LWPClient | MockLWPClient;
+  portState: PortStateManager;
+  private _running = false;
+
+  constructor(client: LWPClient | MockLWPClient) {
     super();
     this.client = client;
     this.portState = new PortStateManager();
-    this._running = false;
   }
 
   async start() {

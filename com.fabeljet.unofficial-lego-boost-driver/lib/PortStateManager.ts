@@ -1,7 +1,18 @@
 import * as C from './constants';
 import { get } from './IoTypeMap';
 
+interface PortState {
+  activeIoType: number | null;
+  seenIoTypes: Record<number, { name: string; lastSeen: number }>;
+}
+
+interface PortStore {
+  ports: Record<string, PortState>;
+}
+
 export class PortStateManager {
+  store: PortStore;
+
   constructor() {
     this.store = {
       ports: {},
@@ -21,16 +32,16 @@ export class PortStateManager {
     }
   }
 
-  getPortKey(portId) {
+  getPortKey(portId: number): string | null {
     return C.PORT_MAP[portId] || null;
   }
 
-  getPortId(portKey) {
+  getPortId(portKey: string): number | null {
     const portId = C.PORT_KEY_TO_ID[portKey];
     return portId !== undefined ? portId : null;
   }
 
-  attach(portId, ioTypeId) {
+  attach(portId: number, ioTypeId: number): { portKey: string; oldIoType: number | null; newIoType: number } | null {
     const portKey = this.getPortKey(portId);
     if (!portKey) {
       return null;
@@ -55,7 +66,7 @@ export class PortStateManager {
     };
   }
 
-  detach(portId) {
+  detach(portId: number): { portKey: string; oldIoType: number | null } | null {
     const portKey = this.getPortKey(portId);
     if (!portKey) {
       return null;
@@ -75,17 +86,17 @@ export class PortStateManager {
     };
   }
 
-  getActiveIoType(portKey) {
+  getActiveIoType(portKey: string): number | null {
     const portState = this.store.ports[portKey];
     return portState?.activeIoType ?? null;
   }
 
-  getSeenIoTypes(portKey) {
+  getSeenIoTypes(portKey: string): Record<number, { name: string; lastSeen: number }> {
     const portState = this.store.ports[portKey];
     return portState?.seenIoTypes ?? {};
   }
 
-  getCapabilities(portKey) {
+  getCapabilities(portKey: string): string[] {
     const activeIoType = this.getActiveIoType(portKey);
     if (!activeIoType) {
       return [];
@@ -94,8 +105,8 @@ export class PortStateManager {
     return get(activeIoType, portKey)?.capabilities ?? [];
   }
 
-  getAllCapabilities() {
-    const allCaps = new Set();
+  getAllCapabilities(): string[] {
+    const allCaps = new Set<string>();
     
     for (const portKey of ['port_c', 'port_d', 'port_tilt', 'port_led']) {
       if (portKey === 'port_c' || portKey === 'port_d') {
@@ -115,12 +126,12 @@ export class PortStateManager {
     return Array.from(allCaps);
   }
 
-  reset() {
+  reset(): void {
     this.store.ports = {};
     this._initializePorts();
   }
 
-  toJSON() {
+  toJSON(): PortStore {
     return JSON.parse(JSON.stringify(this.store));
   }
 }

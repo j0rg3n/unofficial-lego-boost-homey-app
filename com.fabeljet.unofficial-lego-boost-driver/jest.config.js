@@ -3,10 +3,7 @@ export default {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { 
       useESM: false,
-      tsconfig: {
-        module: 'commonjs',
-        esModuleInterop: true,
-      }
+      tsconfig: 'test/tsconfig.json'
     }]
   },
   moduleFileExtensions: ['ts', 'js', 'json'],

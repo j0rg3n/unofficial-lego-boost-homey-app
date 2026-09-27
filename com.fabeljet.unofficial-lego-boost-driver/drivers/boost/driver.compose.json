@@ -3,56 +3,19 @@
     "en": "LEGO Boost"
   },
   "class": "other",
-  "capabilities": [
-    "measure_battery",
-    "button",
-    "light_hue",
-    "light_saturation",
-    "light_brightness",
-    "dim.port_c",
-    "dim.port_d",
-    "measure_tilt_x",
-    "measure_tilt_y",
-    "measure_tilt_z"
-  ],
-  "platforms": [
-    "local"
-  ],
-  "connect": "onConnect",
-  "disconnect": "onDisconnect",
+  "capabilities": [],
+  "platforms": ["local"],
   "pair": [
     {
-      "id": "scan_ble",
+      "id": "list_devices",
+      "template": "list_devices",
       "navigation": {
-        "type": "scan_ble",
-        "filter": {
-          "services": [
-            "00001623-1212-efde-1623-785feabcd123"
-          ]
-        }
+        "next": "add_devices"
       }
-    }
-  ],
-  "settings": [
-    {
-      "id": "motor_max_power",
-      "type": "number",
-      "label": {
-        "en": "Motor Max Power"
-      },
-      "value": 80,
-      "min": 0,
-      "max": 100
     },
     {
-      "id": "tilt_delta",
-      "type": "number",
-      "label": {
-        "en": "Tilt Delta"
-      },
-      "value": 2,
-      "min": 1,
-      "max": 10
+      "id": "add_devices",
+      "template": "add_devices"
     }
   ]
 }
